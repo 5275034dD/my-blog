@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import urllib.request
 import urllib.parse
 from datetime import datetime
@@ -128,14 +129,13 @@ for k in mag7_keys:
         d = market_data[k]
         data_prompt_text += f"{k}: 涨跌={d['pct']:+.2f}%, 30天Beta={betas[k]:.2f}, MA200偏离={d['dist_ma200']:+.2f}%, 52周高点回撤={d['drawdown_52w']:.2f}%, 下次财报日={earnings_calendar[k]}\n"
 
-# 5. 调用 Gemini 3.8 Flash 生成多时间跨度研报
+# 5. 调用 Gemini 3.8 Flash 生成研报 (带 503 UNAVAILABLE 自动重试机制)
 api_key = os.environ.get("GEMINI_API_KEY")
 ai_report = "（未配置 GEMINI_API_KEY，无法生成研报）"
 
 if api_key:
-    try:
-        client = genai.Client(api_key=api_key)
-        prompt = f"""
+    client = genai.Client(api_key=api_key)
+    prompt = f"""
 你是一位资深美股量化与宏观策略分析师。请基于提供的今日行情、200日均线(MA200)、52周高点回撤、Beta系数及宏观利率数据，生成一份结构清晰、多时间维度的深度投资研报《纳斯达克全景研报与多时间跨度展望》。
 
 数据输入:
@@ -156,13 +156,23 @@ if api_key:
 - 给出 1-2 条明确的短线、中线、长线仓位配置与风控策略。
 """
 
-        response = client.models.generate_content(
-            model='gemini-3.8-flash',
-            contents=prompt,
-        )
-        ai_report = response.text
-    except Exception as ai_err:
-        ai_report = f"AI 研报生成异常: {ai_err}"
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = client.models.generate_content(
+                model='gemini-3.8-flash',
+                contents=prompt,
+            )
+            ai_report = response.text
+            break
+        except Exception as ai_err:
+            err_str = str(ai_err)
+            if attempt < max_retries - 1 and ("503" in err_str or "UNAVAILABLE" in err_str or "429" in err_str):
+                sleep_sec = (attempt + 1) * 5
+                print(f"触发 503/429 服务忙，等待 {sleep_sec} 秒后进行第 {attempt + 2} 次重试...")
+                time.sleep(sleep_sec)
+            else:
+                ai_report = f"AI 研报生成异常: {ai_err}"
 
 # 6. 生成 QuickChart 动态柱状图 URL
 chart_pcts = [round(market_data[k]['pct'], 2) if k in market_data else 0 for k in mag7_keys]
