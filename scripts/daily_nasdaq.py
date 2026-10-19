@@ -56,8 +56,8 @@ def calculate_returns(prices):
     return [(prices[i] - prices[i - 1]) / prices[i - 1] for i in range(1, len(prices))]
 
 def calculate_beta(stock_returns, market_returns):
-    """基于协方差与方差计算 30 天 Beta 系数"""
-    n = min(len(stock_returns), len(market_returns))
+    """基于协方差与方差计算近 30 交易日 Beta 系数"""
+    n = min(len(stock_returns), len(market_returns), 30)
     if n < 5:
         return 1.0
     s_ret, m_ret = stock_returns[-n:], market_returns[-n:]
@@ -67,8 +67,8 @@ def calculate_beta(stock_returns, market_returns):
     return cov / var_m if var_m != 0 else 1.0
 
 def fetch_history_data(symbol):
-    """抓取 1 个月 K 线行情数据"""
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=1mo&interval=1d"
+    """抓取 1 年 K 线行情数据，计算 MA200 与 52 周高点回撤"""
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=1y&interval=1d"
     req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
@@ -83,11 +83,20 @@ def fetch_history_data(symbol):
             prev = meta.get('chartPreviousClose', closes[-2] if len(closes) > 1 else price)
             change = price - prev
             pct = (change / prev) * 100 if prev else 0
+
+            # 200 日均线 (MA200)
+            ma200 = sum(closes[-200:]) / min(len(closes), 200)
+            dist_ma200 = ((price - ma200) / ma200) * 100
+
+            # 52 周高点及回撤幅度
+            high_52w = max(closes)
+            drawdown_52w = ((price - high_52w) / high_52w) * 100
+
             return {
                 "price": price, "change": change, "pct": pct,
                 "closes": closes, "returns": calculate_returns(closes),
-                "high": meta.get('regularMarketDayHigh', price),
-                "low": meta.get('regularMarketDayLow', price)
+                "ma200": ma200, "dist_ma200": dist_ma200,
+                "high_52w": high_52w, "drawdown_52w": drawdown_52w
             }
     except Exception as e:
         print(f"抓取 {symbol} 失败: {e}")
@@ -105,20 +114,21 @@ earnings_calendar = {k: fetch_earnings_date(k) for k in mag7_keys}
 
 today = datetime.now().strftime('%Y-%m-%d')
 
-# 4. 构建结构化提示词给 Gemini API
+# 4. 构建包含多时间跨度指标的 Prompt
+ixic_data = market_data.get("IXIC", {})
 data_prompt_text = f"交易日期: {today}\n"
-data_prompt_text += f"纳指大盘(IXIC): 最新={market_data.get('IXIC', {}).get('price', 0):.2f}, 涨跌幅={market_data.get('IXIC', {}).get('pct', 0):+.2f}%\n"
+data_prompt_text += f"纳指大盘(IXIC): 最新={ixic_data.get('price', 0):.2f}, 涨跌幅={ixic_data.get('pct', 0):+.2f}%, 200日均线(MA200)={ixic_data.get('ma200', 0):.2f} (偏离度: {ixic_data.get('dist_ma200', 0):+.2f}%), 52周高点回撤: {ixic_data.get('drawdown_52w', 0):.2f}%\n"
 data_prompt_text += f"恐慌指数(VIX): {market_data.get('VIX', {}).get('price', 0):.2f}\n"
 data_prompt_text += f"美债10年收益率(TNX): {market_data.get('TNX', {}).get('price', 0):.2f}%\n"
 data_prompt_text += f"下一次 FOMC 议息决议日: {fomc_date} (倒计时: {fomc_days} 天)\n\n"
-data_prompt_text += "科技七巨头表现、Beta 与财报日：\n"
+data_prompt_text += "科技七巨头表现、Beta、200日线偏离度与财报日：\n"
 
 for k in mag7_keys:
     if k in market_data:
         d = market_data[k]
-        data_prompt_text += f"{k}: 涨跌={d['pct']:+.2f}%, 30天Beta={betas[k]:.2f}, 下次财报日={earnings_calendar[k]}\n"
+        data_prompt_text += f"{k}: 涨跌={d['pct']:+.2f}%, 30天Beta={betas[k]:.2f}, MA200偏离={d['dist_ma200']:+.2f}%, 52周高点回撤={d['drawdown_52w']:.2f}%, 下次财报日={earnings_calendar[k]}\n"
 
-# 5. 调用 Gemini 3.8 Flash 生成量化分析报告
+# 5. 调用 Gemini 3.8 Flash 生成多时间跨度研报
 api_key = os.environ.get("GEMINI_API_KEY")
 ai_report = "（未配置 GEMINI_API_KEY，无法生成研报）"
 
@@ -126,24 +136,24 @@ if api_key:
     try:
         client = genai.Client(api_key=api_key)
         prompt = f"""
-        你是一位资深美股量化策略分析师。请根据以下今日市场全景数据，生成一份结构化、深度且透彻的《纳斯达克全景研报与宏观催化剂前瞻》。
+        你是一位资深美股量化与宏观策略分析师。请基于提供的今日行情、200日均线(MA200)、52周高点回撤、Beta系数及宏观利率数据，生成一份结构清晰、多时间维度的深度投资研报《纳斯达克全景研报与多时间跨度展望》。
 
         数据输入:
         {data_prompt_text}
 
-        报告生成要求（必须包含以下 4 个 Markdown 模块，语言专业严谨）：
+        请严格按照以下 4 个模块编写（使用专业金融术语，结构化 Markdown 呈现）：
 
-        ### 1. 核心大盘与 Beta 系统性风险解读
-        - 结合 IXIC 走势与整体 Mag 7 的 Beta 系数，点评大盘系统性风险。
+        ### 1. 核心大盘与短线博弈（1-30 天）
+        - 结合 IXIC 今日涨跌幅、VIX 恐慌指数与短期 Beta 敏感度，评估短线避险与交易择时建议。
 
-        ### 2. 科技七巨头分化与财报日风险预警
-        - 结合七巨头的今日涨跌幅与即将到来的财报发布日，提示即将迎来财报测验的重点股票。
+        ### 2. 中期趋势与周期研判（1-12 个月）
+        - 结合纳指及七巨头距离 200 日均线 (MA200) 的偏离度、52周高点回撤幅度，以及美联储 FOMC 利率路径与财报窗口，评估中期牛熊趋势格局与回调加仓/减仓区间。
 
-        ### 3. 宏观利率与 FOMC 决议倒计时研判
-        - 结合 10 年期美债收益率(TNX) 与距离下一次 FOMC 决议（{fomc_date}）的时间节点，评估宏观政策预期对科技股的压制/支撑作用。
+        ### 3. 长期产业与估值展望（1-5 年）
+        - 结合科技七巨头（Mag 7）在 AI 基础设施与 Capex 资本支出方面的长期逻辑，推演长期资产配置逻辑与潜在风险点（给出乐观/基准/悲观三大情景摘要）。
 
-        ### 4. 明日操作策略与关键催化剂提示
-        - 综合技术面与重大宏观事件倒计时，给出 1-2 条短线调仓或风险避险建议。
+        ### 4. 跨周期资产配置建议总结
+        - 给出 1-2 条明确的短线、中线、长线仓位配置与风控策略。
         """
 
         response = client.models.generate_content(
@@ -173,15 +183,15 @@ chart_config = {
 chart_url = f"https://quickchart.io/chart?c={urllib.parse.quote(json.dumps(chart_config))}&w=700&h=380&bkg=white"
 
 # 7. 组装 Markdown 文章输出
-ixic = market_data.get("IXIC", {"price": 0, "change": 0, "pct": 0})
+ixic = market_data.get("IXIC", {"price": 0, "change": 0, "pct": 0, "ma200": 0, "dist_ma200": 0, "drawdown_52w": 0})
 vix = market_data.get("VIX", {"price": 0, "change": 0, "pct": 0})
 tnx = market_data.get("TNX", {"price": 0, "change": 0, "pct": 0})
 
 content = f"""---
-title: "纳斯达克全景研报与宏观事件预警 ({today})"
+title: "纳斯达克全景研报与多时间跨度展望 ({today})"
 date: {today}
 draft: false
-tags: ["美股", "纳斯达克", "财报日历", "FOMC", "深度研报", "Beta系数"]
+tags: ["美股", "纳斯达克", "财报日历", "FOMC", "深度研报", "中期预测", "长期趋势", "Beta系数"]
 ---
 
 ### 📅 重大宏观事件预警
@@ -192,46 +202,4 @@ tags: ["美股", "纳斯达克", "财报日历", "FOMC", "深度研报", "Beta�
 
 ### 📊 核心指标与宏观环境
 
-| 标的 | 最新价格/点位 | 涨跌额 | 涨跌幅 |
-| :--- | :--- | :--- | :--- |
-| **纳斯达克综合指数 (^IXIC)** | **{ixic['price']:.2f}** | {ixic['change']:+.2f} | **{ixic['pct']:+.2f}%** |
-| **恐慌指数 (^VIX)** | {vix['price']:.2f} | {vix['change']:+.2f} | {vix['pct']:+.2f}% |
-| **10年期美债收益率 (^TNX)** | {tnx['price']:.2f}% | {tnx['change']:+.2f} | {tnx['pct']:+.2f}% |
-
----
-
-### 📈 七巨头涨跌幅可视化
-
-![七巨头涨跌幅对比图]({chart_url})
-
----
-
-### 💡 科技七巨头 (Mag 7) Beta 系数与下册财报预告
-
-| 股票代码 | 收盘价 | 涨跌幅 | 30天 Beta | 预计下册财报发布日 |
-| :--- | :--- | :--- | :--- | :--- |
-"""
-
-for k in mag7_keys:
-    if k in market_data:
-        d = market_data[k]
-        b = betas[k]
-        e_date = earnings_calendar.get(k, "待定")
-        content += f"| **{k}** | ${d['price']:.2f} | {d['pct']:+.2f}% | {b:.2f} | 🗓️ `{e_date}` |\n"
-
-content += f"""
----
-
-## 🔍 Gemini AI 深度事件研报
-
-{ai_report}
-
----
-*本报告由 GitHub Actions 自动化工作流实时拉取行情与财报日历，并通过 Gemini AI 联合解析生成。*
-"""
-
-os.makedirs("content/posts", exist_ok=True)
-file_path = f"content/posts/nasdaq-{today}.md"
-with open(file_path, "w", encoding="utf-8") as f:
-    f.write(content)
-print(f"成功生成研报: {file_path}")
+| 标的 | 最新价格/点位 | 涨跌额 | 涨跌幅 | 200日均线 (MA200) | 偏离 MA200 | 52周高点回撤 |
