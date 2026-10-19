@@ -1,0 +1,20 @@
+backend:
+  name: github
+  repo: 5275034dD/my-blog # 请修改为您自己的 GitHub 用户名/仓库名
+  branch: main                       # 触发部署的目标主分支
+
+media_folder: "static/images"        # 上传图片的本地存储路径
+public_folder: "/images"             # 图片在网页上的访问相对路径
+
+collections:
+  - name: "posts"
+    label: "文章列表"
+    folder: "content/posts"
+    create: true                     # 允许新建文章
+    slug: "{{year}}-{{month}}-{{day}}-{{slug}}"
+    fields:
+      - {label: "文章标题", name: "title", widget: "string"}
+      - {label: "发布日期", name: "date", widget: "datetime"}
+      - {label: "草稿状态", name: "draft", widget: "boolean", default: false}
+      - {label: "标签列表", name: "tags", widget: "list", required: false}
+      - {label: "文章正文", name: "body", widget: "markdown"}
