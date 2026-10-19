@@ -2,8 +2,9 @@ name: Daily Nasdaq Auto Post
 
 on:
   schedule:
-    - cron: '30 21 * * *' # 每天北京时间 05:30 自动运行
-  workflow_dispatch: # 支持网页端手动点击触发运行
+    # 北京时间 周二至周六 07:00 自动运行（对应 UTC 时间 周一至周五 23:00）
+    - cron: '0 23 * * 1-5'
+  workflow_dispatch: # 支持在 GitHub 网页端手动点击运行
 
 jobs:
   auto-gen-post:
