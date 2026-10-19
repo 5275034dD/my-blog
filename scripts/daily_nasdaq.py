@@ -118,7 +118,7 @@ for k in mag7_keys:
         d = market_data[k]
         data_prompt_text += f"{k}: 涨跌={d['pct']:+.2f}%, 30天Beta={betas[k]:.2f}, 下次财报日={earnings_calendar[k]}\n"
 
-# 5. 调用 Gemini 2.5 Flash 生成量化分析报告
+# 5. 调用 Gemini 3.8 Flash 生成量化分析报告
 api_key = os.environ.get("GEMINI_API_KEY")
 ai_report = "（未配置 GEMINI_API_KEY，无法生成研报）"
 
@@ -147,7 +147,7 @@ if api_key:
         """
 
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.8-flash',
             contents=prompt,
         )
         ai_report = response.text
