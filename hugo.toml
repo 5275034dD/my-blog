@@ -1,7 +1,4 @@
 baseURL = 'https://37624682.xyz/'
 languageCode = 'zh-cn'
 title = '纳斯达克每日简报'
-
-[module]
-  [[module.imports]]
-    path = 'github.com/adityatelange/hugo-PaperMod'
+theme = 'PaperMod'
