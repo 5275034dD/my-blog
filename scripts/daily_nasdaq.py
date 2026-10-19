@@ -136,25 +136,25 @@ if api_key:
     try:
         client = genai.Client(api_key=api_key)
         prompt = f"""
-        你是一位资深美股量化与宏观策略分析师。请基于提供的今日行情、200日均线(MA200)、52周高点回撤、Beta系数及宏观利率数据，生成一份结构清晰、多时间维度的深度投资研报《纳斯达克全景研报与多时间跨度展望》。
+你是一位资深美股量化与宏观策略分析师。请基于提供的今日行情、200日均线(MA200)、52周高点回撤、Beta系数及宏观利率数据，生成一份结构清晰、多时间维度的深度投资研报《纳斯达克全景研报与多时间跨度展望》。
 
-        数据输入:
-        {data_prompt_text}
+数据输入:
+{data_prompt_text}
 
-        请严格按照以下 4 个模块编写（使用专业金融术语，结构化 Markdown 呈现）：
+请严格按照以下 4 个模块编写（使用专业金融术语，结构化 Markdown 呈现）：
 
-        ### 1. 核心大盘与短线博弈（1-30 天）
-        - 结合 IXIC 今日涨跌幅、VIX 恐慌指数与短期 Beta 敏感度，评估短线避险与交易择时建议。
+### 1. 核心大盘与短线博弈（1-30 天）
+- 结合 IXIC 今日涨跌幅、VIX 恐慌指数与短期 Beta 敏感度，评估短线避险与交易择时建议。
 
-        ### 2. 中期趋势与周期研判（1-12 个月）
-        - 结合纳指及七巨头距离 200 日均线 (MA200) 的偏离度、52周高点回撤幅度，以及美联储 FOMC 利率路径与财报窗口，评估中期牛熊趋势格局与回调加仓/减仓区间。
+### 2. 中期趋势与周期研判（1-12 个月）
+- 结合纳指及七巨头距离 200 日均线 (MA200) 的偏离度、52周高点回撤幅度，以及美联储 FOMC 利率路径与财报窗口，评估中期牛熊趋势格局与回调加仓/减仓区间。
 
-        ### 3. 长期产业与估值展望（1-5 年）
-        - 结合科技七巨头（Mag 7）在 AI 基础设施与 Capex 资本支出方面的长期逻辑，推演长期资产配置逻辑与潜在风险点（给出乐观/基准/悲观三大情景摘要）。
+### 3. 长期产业与估值展望（1-5 年）
+- 结合科技七巨头（Mag 7）在 AI 基础设施与 Capex 资本支出方面的长期逻辑，推演长期资产配置逻辑与潜在风险点（给出乐观/基准/悲观三大情景摘要）。
 
-        ### 4. 跨周期资产配置建议总结
-        - 给出 1-2 条明确的短线、中线、长线仓位配置与风控策略。
-        """
+### 4. 跨周期资产配置建议总结
+- 给出 1-2 条明确的短线、中线、长线仓位配置与风控策略。
+"""
 
         response = client.models.generate_content(
             model='gemini-3.8-flash',
@@ -182,24 +182,67 @@ chart_config = {
 }
 chart_url = f"https://quickchart.io/chart?c={urllib.parse.quote(json.dumps(chart_config))}&w=700&h=380&bkg=white"
 
-# 7. 组装 Markdown 文章输出
+# 7. 组装 Markdown 文章输出 (通过列表拼接，避免三引号解析异常)
 ixic = market_data.get("IXIC", {"price": 0, "change": 0, "pct": 0, "ma200": 0, "dist_ma200": 0, "drawdown_52w": 0})
 vix = market_data.get("VIX", {"price": 0, "change": 0, "pct": 0})
 tnx = market_data.get("TNX", {"price": 0, "change": 0, "pct": 0})
 
-content = f"""---
-title: "纳斯达克全景研报与多时间跨度展望 ({today})"
-date: {today}
-draft: false
-tags: ["美股", "纳斯达克", "财报日历", "FOMC", "深度研报", "中期预测", "长期趋势", "Beta系数"]
----
+md_lines = []
+md_lines.append("---")
+md_lines.append(f'title: "纳斯达克全景研报与多时间跨度展望 ({today})"')
+md_lines.append(f"date: {today}")
+md_lines.append("draft: false")
+md_lines.append('tags: ["美股", "纳斯达克", "财报日历", "FOMC", "深度研报", "中期预测", "长期趋势", "Beta系数"]')
+md_lines.append("---")
+md_lines.append("")
+md_lines.append("### 📅 重大宏观事件预警")
+md_lines.append("")
+md_lines.append(f"* 🏛️ **下一次美联储 (FOMC) 议息会议决议日**：`{fomc_date}` （⌛ 距离现在还有 **{fomc_days}** 天）")
+md_lines.append("")
+md_lines.append("---")
+md_lines.append("")
+md_lines.append("### 📊 核心指标与宏观环境")
+md_lines.append("")
+md_lines.append("| 标的 | 最新价格/点位 | 涨跌额 | 涨跌幅 | 200日均线 (MA200) | 偏离 MA200 | 52周高点回撤 |")
+md_lines.append("| :--- | :--- | :--- | :--- | :--- | :--- | :--- |")
+md_lines.append(f"| **纳斯达克综合指数 (^IXIC)** | **{ixic['price']:.2f}** | {ixic['change']:+.2f} | **{ixic['pct']:+.2f}%** | {ixic['ma200']:.2f} | **{ixic['dist_ma200']:+.2f}%** | **{ixic['drawdown_52w']:.2f}%** |")
+md_lines.append(f"| **恐慌指数 (^VIX)** | {vix['price']:.2f} | {vix['change']:+.2f} | {vix['pct']:+.2f}% | - | - | - |")
+md_lines.append(f"| **10年期美债收益率 (^TNX)** | {tnx['price']:.2f}% | {tnx['change']:+.2f} | {tnx['pct']:+.2f}% | - | - | - |")
+md_lines.append("")
+md_lines.append("---")
+md_lines.append("")
+md_lines.append("### 📈 七巨头涨跌幅可视化")
+md_lines.append("")
+md_lines.append(f"![七巨头涨跌幅对比图]({chart_url})")
+md_lines.append("")
+md_lines.append("---")
+md_lines.append("")
+md_lines.append("### 💡 科技七巨头 (Mag 7) 量化指标与下期财报")
+md_lines.append("")
+md_lines.append("| 股票代码 | 收盘价 | 涨跌幅 | 30天 Beta | 偏离 MA200 | 52周高点回撤 | 预计下期财报日 |")
+md_lines.append("| :--- | :--- | :--- | :--- | :--- | :--- | :--- |")
 
-### 📅 重大宏观事件预警
+for k in mag7_keys:
+    if k in market_data:
+        d = market_data[k]
+        b = betas[k]
+        e_date = earnings_calendar.get(k, "待定")
+        md_lines.append(f"| **{k}** | ${d['price']:.2f} | {d['pct']:+.2f}% | {b:.2f} | {d['dist_ma200']:+.2f}% | {d['drawdown_52w']:.2f}% | 🗓️ `{e_date}` |")
 
-* 🏛️ **下一次美联储 (FOMC) 议息会议决议日**：`{fomc_date}` （⌛ 距离现在还有 **{fomc_days}** 天）
+md_lines.append("")
+md_lines.append("---")
+md_lines.append("")
+md_lines.append("## 🔍 Gemini AI 深度全景研报（含中长期趋势）")
+md_lines.append("")
+md_lines.append(ai_report)
+md_lines.append("")
+md_lines.append("---")
+md_lines.append("*本报告由 GitHub Actions 自动化工作流实时拉取行情与财报日历，并通过 Gemini AI 联合解析生成。*")
 
----
+content = "\n".join(md_lines)
 
-### 📊 核心指标与宏观环境
-
-| 标的 | 最新价格/点位 | 涨跌额 | 涨跌幅 | 200日均线 (MA200) | 偏离 MA200 | 52周高点回撤 |
+os.makedirs("content/posts", exist_ok=True)
+file_path = f"content/posts/nasdaq-{today}.md"
+with open(file_path, "w", encoding="utf-8") as f:
+    f.write(content)
+print(f"成功生成研报: {file_path}")
