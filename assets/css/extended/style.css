@@ -1,0 +1,28 @@
+/* 1. 加宽主页面宽度（默认约 720px，扩展至 880px 适合多列数据表格） */
+:root {
+    --main-width: 880px;
+}
+
+/* 2. 优化 Markdown 数据表格展示：支持移动端横向滚动、防止文字挤压换行 */
+.post-content table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+    margin: 1.5rem 0;
+}
+
+.post-content table th, 
+.post-content table td {
+    padding: 8px 14px;
+    text-align: center;
+}
+
+/* 3. 图片与 QuickChart 图表自适应宽度 */
+.post-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    display: block;
+    margin: 1rem auto;
+}
