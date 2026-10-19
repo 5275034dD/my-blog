@@ -2,8 +2,8 @@ backend:
   name: github
   repo: 5275034dD/my-blog # 请修改为您自己的 GitHub 用户名/仓库名
   branch: main
-  base_url: https://curly-field-251b.37624682a.workers.dev# 替换为您的 Worker 域名
-  auth_endpoint: auth# 触发部署的目标主分支
+  base_url: https://curly-field-251b.37624682a.workers.dev  # 替换为您的 Worker 域名
+  auth_endpoint: auth  # 触发部署的目标主分支
 
 media_folder: "static/images"        # 上传图片的本地存储路径
 public_folder: "/images"             # 图片在网页上的访问相对路径
