@@ -48,7 +48,7 @@ def fetch_symbol_data(symbol):
                 
                 closes = [c for _, c in valid_data]
                 
-                # 【核心修正】：强制使用数组最后两根真实 K 线进行增量与百分比计算
+                # 强制使用数组最后两根真实 K 线进行增量与百分比计算，防止盘后脏数据
                 price = closes[-1]
                 prev = closes[-2]
                 change = price - prev
@@ -136,36 +136,4 @@ description: "纳斯达克综合指数每日量化解析与科技股洞察。"
    - ### 四、热门科技股表现：使用 Markdown 表格梳理科技七巨头（NVDA, AAPL, MSFT, GOOGL, AMZN, META, TSLA）的收盘表现与驱动逻辑。
    - ### 五、后市操作建议：给出明确的短线、中线策略与风控提示。
 
-3. 绝对原则：所有价格、涨跌幅数据必须以我提供的 JSON 数据为准，不得自行捏造数值！表格格式必须工整规范。
-"""
-
-    print("🤖 正在调用 Gemini 2.5 API 生成研报...")
-    response = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=prompt
-    )
-    
-    return response.text, today_str
-
-def save_markdown_post(content, today_str):
-    """保存 Markdown 文件到 content/posts/ 目录"""
-    output_dir = os.path.join(os.getcwd(), "content", "posts")
-    os.makedirs(output_dir, exist_ok=True)
-    
-    filename = f"{today_str}-nasdaq-daily.md"
-    filepath = os.path.join(output_dir, filename)
-    
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write(content)
-        
-    print(f"✅ 研报生成成功并已保存至: {filepath}")
-
-if __name__ == "__main__":
-    print("🚀 开始运行美股量化自动化抓取脚本...")
-    data = fetch_all_market_data()
-    if not data or "IXIC" not in data:
-        print("❌ 错误：核心标的 IXIC 抓取失败，终止自动流程。")
-        sys.exit(1)
-        
-    report_md, today_date = generate_report_with_ai(data)
-    save_markdown_post(report_md, today_date)
+3. 绝对原则：所有价格、涨跌幅数据必须以我提供的 JSON 数据为准，不得自行
