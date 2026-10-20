@@ -5,7 +5,6 @@ import time
 import urllib.request
 from datetime import datetime, timezone, timedelta
 from google import genai
-from google.genai import types
 
 # 定义需要抓取的核心标的列表
 SYMBOLS = {
@@ -112,28 +111,57 @@ def generate_report_with_ai(market_data):
     today_str = datetime.now(beijing_tz).strftime('%Y-%m-%d')
     date_display = datetime.now(beijing_tz).strftime('%Y年%m月%d日')
 
-    prompt = f"""
-你是一位顶尖的美股量化策略分析师。请根据以下我抓取到的真实盘面数据，撰写一份符合 Hugo 博客格式的《纳斯达克市场日报》。
+    market_json_str = json.dumps(market_data, ensure_ascii=False, indent=2)
 
-【今日真实盘面数据】：
-{json.dumps(market_data, ensure_ascii=False, indent=2)}
+    prompt = (
+        "你是一位顶尖的美股量化策略分析师。请根据以下我抓取到的真实盘面数据，撰写一份符合 Hugo 博客格式的《纳斯达克市场日报》。\n\n"
+        f"【今日真实盘面数据】：\n{market_json_str}\n\n"
+        "【严格排版与格式要求】：\n"
+        "1. 文件顶部必须包含 Hugo YAML Front Matter 格式标头：\n"
+        "---\n"
+        f'title: "📊 纳斯达克市场日报 — {date_display}"\n'
+        f"date: {today_str}T07:00:00+08:00\n"
+        "draft: false\n"
+        'tags: ["美股", "纳斯达克", "量化研报", "科技股"]\n'
+        'categories: ["美股日报"]\n'
+        'description: "纳斯达克综合指数每日量化解析与科技股洞察。"\n'
+        "---\n\n"
+        "2. 正文必须包含以下五个完整章节，使用三级 Markdown 标题 (###)：\n"
+        "   - ### 一、市场概览：包含当天的纳指收盘数据表格（收盘价、涨跌幅、涨跌点数）以及最近 5 个交易日的收盘明细表格。\n"
+        "   - ### 二、重要新闻：结合当前美股宏观背景（美联储利率政策、AI 科技动态、财报季、美债收益率等），整理 5-8 条硬核要闻点评。\n"
+        "   - ### 三、技术分析：包含大盘 RSI、MACD、MA5、MA200 移动平均线指标分析表格，并列出明确的支撑位（26,000、25,500、25,200）与阻力位（26,700、27,000、27,600）。\n"
+        "   - ### 四、热门科技股表现：使用 Markdown 表格梳理科技七巨头（NVDA, AAPL, MSFT, GOOGL, AMZN, META, TSLA）的收盘表现与驱动逻辑。\n"
+        "   - ### 五、后市操作建议：给出明确的短线、中线策略与风控提示。\n\n"
+        "3. 绝对原则：所有价格、涨跌幅数据必须以我提供的 JSON 数据为准，不得自行捏造数值！表格格式必须工整规范。\n"
+    )
 
-【严格排版与格式要求】：
-1. 文件顶部必须包含 Hugo YAML Front Matter 格式标头：
----
-title: "📊 纳斯达克市场日报 — {date_display}"
-date: {today_str}T07:00:00+08:00
-draft: false
-tags: ["美股", "纳斯达克", "量化研报", "科技股"]
-categories: ["美股日报"]
-description: "纳斯达克综合指数每日量化解析与科技股洞察。"
----
+    print("🤖 正在调用 Gemini 3.8 API 生成研报...")
+    response = client.models.generate_content(
+        model="gemini-3.8-flash",
+        contents=prompt
+    )
+    
+    return response.text, today_str
 
-2. 正文必须包含以下五个完整章节，使用三级 Markdown 标题 (###)：
-   - ### 一、市场概览：包含当天的纳指收盘数据表格（收盘价、涨跌幅、涨跌点数）以及最近 5 个交易日的收盘明细表格。
-   - ### 二、重要新闻：结合当前美股宏观背景（美联储利率政策、AI 科技动态、财报季、美债收益率等），整理 5-8 条硬核要闻点评。
-   - ### 三、技术分析：包含大盘 RSI、MACD、MA5、MA200 移动平均线指标分析表格，并列出明确的支撑位（26,000、25,500、25,200）与阻力位（26,700、27,000、27,600）。
-   - ### 四、热门科技股表现：使用 Markdown 表格梳理科技七巨头（NVDA, AAPL, MSFT, GOOGL, AMZN, META, TSLA）的收盘表现与驱动逻辑。
-   - ### 五、后市操作建议：给出明确的短线、中线策略与风控提示。
+def save_markdown_post(content, today_str):
+    """保存 Markdown 文件到 content/posts/ 目录"""
+    output_dir = os.path.join(os.getcwd(), "content", "posts")
+    os.makedirs(output_dir, exist_ok=True)
+    
+    filename = f"{today_str}-nasdaq-daily.md"
+    filepath = os.path.join(output_dir, filename)
+    
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(content)
+        
+    print(f"✅ 研报生成成功并已保存至: {filepath}")
 
-3. 绝对原则：所有价格、涨跌幅数据必须以我提供的 JSON 数据为准，不得自行
+if __name__ == "__main__":
+    print("🚀 开始运行美股量化自动化抓取脚本...")
+    data = fetch_all_market_data()
+    if not data or "IXIC" not in data:
+        print("❌ 错误：核心标的 IXIC 抓取失败，终止自动流程。")
+        sys.exit(1)
+        
+    report_md, today_date = generate_report_with_ai(data)
+    save_markdown_post(report_md, today_date)
