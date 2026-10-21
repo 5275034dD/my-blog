@@ -1,11 +1,10 @@
-<!-- 强制取消 PaperMod 表格滚动容器并隐藏横向滑条 -->
 <style>
-  /* 1. 彻底关闭外层容器及页面溢出限制 */
+  /* 彻底关闭外层容器及页面溢出限制 */
   html, body, .main, article, .post-single, .post-content, .table-wrapper {
     overflow-x: hidden !important;
   }
 
-  /* 2. 取消 PaperMod 默认将 table 改为 block 的滚动框形态 */
+  /* 取消 PaperMod 默认将 table 改为 block 的滚动框形态 */
   .post-content table,
   .table-wrapper table {
     display: table !important;
@@ -16,7 +15,7 @@
     border-collapse: collapse !important;
   }
 
-  /* 3. 极紧凑字体与外边距，确保多列数据在页面宽度内完全平铺 */
+  /* 紧凑字体与外边距 */
   .post-content th,
   .post-content td {
     padding: 4px 2px !important;
