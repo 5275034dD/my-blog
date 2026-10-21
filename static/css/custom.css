@@ -1,0 +1,17 @@
+/* 1. 扩大博客主内容区域的宽度 */
+.container, .main, .post-content, article {
+    max-width: 95% !important; /* 让页面容器宽度从原来的 600px/800px 扩大到屏幕的 95% */
+}
+
+/* 2. 强制表格占满页面，支持自动微调字号 */
+table {
+    width: 100% !important;
+    display: table !important;
+    font-size: 14px !important;
+}
+
+/* 3. 在极窄的手机屏幕上，允许单元格内文字自动换行，防止撑开页面 */
+th, td {
+    word-break: break-word !important;
+    padding: 6px 4px !important;
+}
