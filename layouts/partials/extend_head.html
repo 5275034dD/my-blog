@@ -1,0 +1,28 @@
+<!-- 终极覆盖：强制移除 PaperMod 所有表格与容器的横向滑条 -->
+<style>
+  /* 1. 强制关闭外层容器溢出限制 */
+  html, body, .main, article, .post-single, .post-content, .table-wrapper {
+    overflow-x: visible !important;
+  }
+
+  /* 2. 彻底取消 PaperMod 默认将 table 改为 block 的滚动框形态 */
+  .post-content table,
+  .table-wrapper table {
+    display: table !important;
+    width: 100% !important;
+    table-layout: auto !important;
+    overflow: visible !important;
+    margin: 1rem 0 !important;
+    border-collapse: collapse !important;
+  }
+
+  /* 3. 极紧凑字体与外边距，保证 9 列大表在页面宽度内完全平铺展开 */
+  .post-content th,
+  .post-content td {
+    padding: 4px 2px !important;
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+  }
+</style>
