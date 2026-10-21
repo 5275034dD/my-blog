@@ -1,22 +1,23 @@
-<!-- 终极覆盖：强制移除 PaperMod 所有表格与容器的横向滑条 -->
+<!-- 终极双保险：CSS 强行注入 + JS 动态干掉滚动容器 -->
 <style>
-  /* 1. 强制关闭外层容器溢出限制 */
-  html, body, .main, article, .post-single, .post-content, .table-wrapper {
-    overflow-x: visible !important;
+  /* 1. 强制所有容器（包括 HTML、Body、Post-Content、Table-Wrapper）隐藏横向滚动条 */
+  html, body, .main, article, .post-single, .post-content, .table-wrapper, div[class*="table"] {
+    overflow-x: hidden !important; /* 强制隐藏横向滚动条 */
+    max-width: 100% !important;
   }
 
-  /* 2. 彻底取消 PaperMod 默认将 table 改为 block 的滚动框形态 */
+  /* 2. 彻底取消 PaperMod 表格的 Block 滚动形态，还原为标准 Table */
   .post-content table,
   .table-wrapper table {
     display: table !important;
     width: 100% !important;
     table-layout: auto !important;
-    overflow: visible !important;
+    overflow-x: hidden !important;
     margin: 1rem 0 !important;
     border-collapse: collapse !important;
   }
 
-  /* 3. 极紧凑字体与外边距，保证 9 列大表在页面宽度内完全平铺展开 */
+  /* 3. 极紧凑内边距与字体，确保 9 列数据在屏幕内自然排开 */
   .post-content th,
   .post-content td {
     padding: 4px 2px !important;
@@ -26,3 +27,20 @@
     word-break: break-word !important;
   }
 </style>
+
+<script>
+  // JavaScript 动态脚本：页面加载后强行移除外层 wrapper 的 overflow 属性
+  document.addEventListener("DOMContentLoaded", function() {
+    var wrappers = document.querySelectorAll('.table-wrapper, div[style*="overflow"]');
+    wrappers.forEach(function(el) {
+      el.style.overflow = 'visible';
+      el.style.overflowX = 'hidden';
+    });
+    
+    var tables = document.querySelectorAll('table');
+    tables.forEach(function(tb) {
+      tb.style.overflow = 'visible';
+      tb.style.overflowX = 'hidden';
+    });
+  });
+</script>
