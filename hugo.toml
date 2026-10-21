@@ -22,3 +22,7 @@ theme = 'PaperMod'
   ShowPostNavLinks = true
   ShowBreadCrumbs = true
   ShowCodeCopyButtons = true
+
+# ================= 新增以下内容 =================
+[assets]
+  customCSS = ["css/custom.css"]
