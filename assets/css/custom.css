@@ -1,0 +1,23 @@
+/* 1. 扩大 PaperMod 页面主容器的宽度 */
+.main {
+    max-width: 90% !important; /* 原版默认约 800px，调整为占屏幕 90% */
+}
+
+.post-single {
+    max-width: 100% !important;
+}
+
+/* 2. 让大表格铺满页面并自动压缩 padding */
+.post-content table {
+    width: 100% !important;
+    display: table !important;
+    table-layout: auto !important;
+    font-size: 14px !important;
+}
+
+/* 3. 在移动端和窄屏上自动调整内边距，规避撑开显示不全 */
+.post-content th,
+.post-content td {
+    padding: 8px 6px !important;
+    word-break: break-word !important;
+}
