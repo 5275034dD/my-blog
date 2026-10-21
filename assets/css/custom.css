@@ -1,23 +1,29 @@
-/* 1. 扩大 PaperMod 页面主容器的宽度 */
-.main {
-    max-width: 90% !important; /* 原版默认约 800px，调整为占屏幕 90% */
+/* 1. 强行拉宽 PaperMod 主页面与文章容器 */
+:root {
+    --main-width: 95% !important; /* 覆盖 PaperMod 默认变量 */
 }
 
-.post-single {
-    max-width: 100% !important;
+body .main,
+body .post-single,
+body .post-content {
+    max-width: 95% !important;
+    width: 95% !important;
 }
 
-/* 2. 让大表格铺满页面并自动压缩 padding */
+/* 2. 表格容器防溢出并自适应屏幕 */
 .post-content table {
     width: 100% !important;
-    display: table !important;
+    margin-bottom: 1rem;
+    color: var(--primary);
+    border-collapse: collapse;
+    display: table !important; /* 强制表格以普通表格形态渲染，防挤压 */
     table-layout: auto !important;
-    font-size: 14px !important;
 }
 
-/* 3. 在移动端和窄屏上自动调整内边距，规避撑开显示不全 */
+/* 3. 单元格字号与内边距压缩 */
 .post-content th,
 .post-content td {
-    padding: 8px 6px !important;
+    padding: 6px 8px !important;
+    font-size: 13px !important;
     word-break: break-word !important;
 }
